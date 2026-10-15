@@ -4,21 +4,19 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 public class Intake {
-    public DcMotorEx intakeMotor;
+    public DcMotorEx intake;
 
     public Intake(HardwareMap hardwareMap){
-        intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
     }
 
     public void run(double scalar) {
-        intakeMotor.setPower(1 * scalar);
+        intake.setPower(scalar);
     }
-
     public void stop(){
-        intakeMotor.setPower(0);
+        intake.setPower(0);
     }
-
     public double getPower(){
-        return intakeMotor.getPower();
+        return intake.getPower();
     }
 }

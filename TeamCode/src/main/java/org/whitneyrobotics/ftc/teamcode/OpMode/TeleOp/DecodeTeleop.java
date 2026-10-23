@@ -3,7 +3,7 @@ package org.whitneyrobotics.ftc.teamcode.OpMode.TeleOp;
 import static org.whitneyrobotics.ftc.teamcode.Extensions.GamepadEx.RumbleEffects.endgame;
 import static org.whitneyrobotics.ftc.teamcode.Extensions.GamepadEx.RumbleEffects.matchEnd;
 
-import com.pedropathing.geometry.Pose;
+import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
@@ -70,12 +70,8 @@ public class DecodeTeleop extends OpModeEx {
     }
 
     @Override
-    public void start() {
-        robot.drive.startDrive();
-    }
-
-    @Override
     protected void loopInternal() {
+        robot.drive.update(gamepad1);
         telemetryPro.update();
     }
 }

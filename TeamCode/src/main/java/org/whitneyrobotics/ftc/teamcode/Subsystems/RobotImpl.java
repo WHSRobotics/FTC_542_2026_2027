@@ -2,10 +2,10 @@ package org.whitneyrobotics.ftc.teamcode.Subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.pedropathing.geometry.Pose;
+import com.pedropathing.math.Pose;
 
 import org.whitneyrobotics.ftc.teamcode.Constants.Alliance;
-import org.whitneyrobotics.ftc.teamcode.pedroPathing.PedroDrive;
+import org.whitneyrobotics.ftc.teamcode.pedro.PedroDrive;
 
 public class RobotImpl {
 

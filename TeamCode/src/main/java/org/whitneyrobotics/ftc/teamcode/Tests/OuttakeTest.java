@@ -1,8 +1,12 @@
 package org.whitneyrobotics.ftc.teamcode.Tests;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.IMU;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 import org.whitneyrobotics.ftc.teamcode.Extensions.OpModeEx.OpModeEx;
 import org.whitneyrobotics.ftc.teamcode.Subsystems.Outtake;
@@ -11,6 +15,9 @@ import org.whitneyrobotics.ftc.teamcode.Subsystems.Outtake;
 public class OuttakeTest extends OpModeEx {
     public Outtake outtake;
     private DcMotorEx fL, bL, fR, bR;
+    private IMU imu;
+    private double startingHeading;
+    private boolean fieldCentric;
     private int targetRpm;
     private double ticksPerRev;
 
@@ -24,10 +31,16 @@ public class OuttakeTest extends OpModeEx {
         bL = hardwareMap.get(DcMotorEx.class, "bL");
         fR = hardwareMap.get(DcMotorEx.class, "fR");
         bR = hardwareMap.get(DcMotorEx.class, "bR");
+        imu = hardwareMap.get(IMU.class, "imu");
+        imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
+                RevHubOrientationOnRobot.UsbFacingDirection.UP)));
     }
 
     @Override
     public void startInternal() {
+        startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        gamepad1.BUMPER_RIGHT.onPress(() -> fieldCentric = !fieldCentric);
         gamepad1.TRIANGLE.onPress(() -> setRpm(2000));
         gamepad1.CIRCLE.onPress(() -> setRpm(2500));
         gamepad1.CROSS.onPress(() -> setRpm(3000));
@@ -43,19 +56,17 @@ public class OuttakeTest extends OpModeEx {
         }
     }
 
-    // Ready for a Pinpoint heading relative to the heading captured at Start after tuning.
-    private static double[] fieldCentricAxes(double x, double y, double heading) {
-        return new double[] {
-                x * Math.cos(heading) + y * Math.sin(heading),
-                -x * Math.sin(heading) + y * Math.cos(heading)
-        };
-    }
-
     @Override
     protected void loopInternal() {
         double y = gamepad1.LEFT_STICK_Y.value();
         double x = -gamepad1.LEFT_STICK_X.value();
         double rx = -gamepad1.RIGHT_STICK_X.value();
+        if (fieldCentric) {
+            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - startingHeading;
+            double rotatedX = x * Math.cos(heading) + y * Math.sin(heading);
+            y = -x * Math.sin(heading) + y * Math.cos(heading);
+            x = rotatedX;
+        }
         double scale = Math.max(1, Math.abs(y) + Math.abs(x) + Math.abs(rx));
 
         fL.setPower((y + x + rx) / scale);
@@ -65,6 +76,7 @@ public class OuttakeTest extends OpModeEx {
 
         telemetryPro.addData("Flywheel target RPM", targetRpm);
         telemetryPro.addData("Flywheel actual RPM", outtake.outtake.getVelocity() * 60 / ticksPerRev);
+        telemetryPro.addData("Drive mode", fieldCentric ? "Field-centric" : "Robot-centric");
     }
 
 }

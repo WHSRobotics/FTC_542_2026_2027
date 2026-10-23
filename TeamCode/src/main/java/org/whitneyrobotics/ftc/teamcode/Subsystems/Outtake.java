@@ -34,7 +34,8 @@ public class Outtake {
     public Outtake(HardwareMap hardwareMap, boolean isNectar){
         outtake=hardwareMap.get(DcMotorEx.class,"outtake");
         staticVel=true;
-        cam=new Limelight(hardwareMap);
+        // Fixed-power testing does not need the Limelight yet.
+        // cam=new Limelight(hardwareMap);
         h0=0.15;
         hF=1.1;
         launchAngle=30;

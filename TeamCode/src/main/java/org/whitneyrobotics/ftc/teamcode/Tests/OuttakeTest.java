@@ -18,19 +18,24 @@ public class OuttakeTest extends OpModeEx {
     private IMU imu;
     private double startingHeading;
     private boolean fieldCentric;
+    private boolean slowMode;
     private int targetRpm;
     private double ticksPerRev;
 
     @Override
     public void initInternal() {
-        outtake = new Outtake(hardwareMap, true);
-        outtake.outtake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        ticksPerRev = outtake.outtake.getMotorType().getTicksPerRev();
-        if (ticksPerRev <= 0) throw new IllegalStateException("Configure the outtake motor's encoder ticks per revolution");
+//        outtake = new Outtake(hardwareMap, true);
+//        outtake.outtake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        ticksPerRev = outtake.outtake.getMotorType().getTicksPerRev();
+//        if (ticksPerRev <= 0) throw new IllegalStateException("Configure the outtake motor's encoder ticks per revolution");
         fL = hardwareMap.get(DcMotorEx.class, "fL");
         bL = hardwareMap.get(DcMotorEx.class, "bL");
         fR = hardwareMap.get(DcMotorEx.class, "fR");
         bR = hardwareMap.get(DcMotorEx.class, "bR");
+        fL.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        bL.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        fR.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        bR.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
@@ -41,26 +46,32 @@ public class OuttakeTest extends OpModeEx {
     public void startInternal() {
         startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         gamepad1.BUMPER_RIGHT.onPress(() -> fieldCentric = !fieldCentric);
-        gamepad1.TRIANGLE.onPress(() -> setRpm(2000));
-        gamepad1.CIRCLE.onPress(() -> setRpm(2500));
-        gamepad1.CROSS.onPress(() -> setRpm(3000));
-        gamepad1.SQUARE.onPress(() -> setRpm(3500));
+        gamepad1.BUMPER_LEFT.onPress(() -> slowMode = !slowMode);
+//        gamepad1.TRIANGLE.onPress(() -> setRpm(2000));
+//        gamepad1.CIRCLE.onPress(() -> setRpm(2500));
+//        gamepad1.CROSS.onPress(() -> setRpm(3000));
+//        gamepad1.SQUARE.onPress(() -> setRpm(3500));
     }
 
-    private void setRpm(int rpm) {
-        targetRpm = targetRpm == rpm ? 0 : rpm;
-        if (targetRpm == 0) {
-            outtake.stop();
-        } else {
-            outtake.outtake.setVelocity(targetRpm * ticksPerRev / 60);
-        }
-    }
+//    private void setRpm(int rpm) {
+//        targetRpm = targetRpm == rpm ? 0 : rpm;
+//        if (targetRpm == 0) {
+//            outtake.stop();
+//        } else {
+//            outtake.outtake.setVelocity(targetRpm * ticksPerRev / 60);
+//        }
+//    }
 
     @Override
     protected void loopInternal() {
         double y = gamepad1.LEFT_STICK_Y.value();
-        double x = -gamepad1.LEFT_STICK_X.value();
-        double rx = -gamepad1.RIGHT_STICK_X.value();
+        double x = gamepad1.LEFT_STICK_X.value();
+        double rx = gamepad1.RIGHT_STICK_X.value();
+        double speed = slowMode ? 0.5 : 1.0;
+        y = y * y * y * speed;
+        x = x * x * x * speed;
+        rx = rx * rx * rx * speed;
+
         if (fieldCentric) {
             double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - startingHeading;
             double rotatedX = x * Math.cos(heading) + y * Math.sin(heading);
@@ -69,14 +80,15 @@ public class OuttakeTest extends OpModeEx {
         }
         double scale = Math.max(1, Math.abs(y) + Math.abs(x) + Math.abs(rx));
 
-        fL.setPower((y + x + rx) / scale);
-        bL.setPower((y - x + rx) / scale);
+        fL.setPower(-(y + x + rx) / scale);
+        bL.setPower(-(y - x + rx) / scale);
         fR.setPower((y - x - rx) / scale);
         bR.setPower((y + x - rx) / scale);
 
         telemetryPro.addData("Flywheel target RPM", targetRpm);
-        telemetryPro.addData("Flywheel actual RPM", outtake.outtake.getVelocity() * 60 / ticksPerRev);
+//        telemetryPro.addData("Flywheel actual RPM", outtake.outtake.getVelocity() * 60 / ticksPerRev);
         telemetryPro.addData("Drive mode", fieldCentric ? "Field-centric" : "Robot-centric");
+        telemetryPro.addData("Speed mode", slowMode ? "Slow (50%)" : "Normal");
     }
 
 }

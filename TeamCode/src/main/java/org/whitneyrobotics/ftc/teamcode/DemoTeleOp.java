@@ -1,6 +1,7 @@
 package org.whitneyrobotics.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import org.whitneyrobotics.ftc.teamcode.Extensions.OpModeEx.OpModeEx;
@@ -18,17 +19,21 @@ public class DemoTeleOp extends OpModeEx{
         bL = hardwareMap.get(DcMotorEx.class, "bL");
         fR = hardwareMap.get(DcMotorEx.class, "fR");
         bR = hardwareMap.get(DcMotorEx.class, "bR");
+        fL.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        bL.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        fR.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        bR.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         intake = new Intake(hardwareMap);
     }
 
     @Override
     protected void loopInternal() {
-        double y = -gamepad1.LEFT_STICK_Y.value();
-        double x = -gamepad1.LEFT_STICK_X.value();
-        double rx = -gamepad1.RIGHT_STICK_X.value();
+        double y = gamepad1.LEFT_STICK_Y.value();
+        double x = gamepad1.LEFT_STICK_X.value();
+        double rx = gamepad1.RIGHT_STICK_X.value();
 
-        fL.setPower(y+x+rx);
-        bL.setPower(y-x+rx);
+        fL.setPower(-(y+x+rx));
+        bL.setPower(-(y-x+rx));
         fR.setPower(y-x-rx);
         bR.setPower(y+x-rx);
 

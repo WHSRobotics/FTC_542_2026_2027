@@ -3,6 +3,7 @@ package org.whitneyrobotics.ftc.teamcode.Subsystems;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.pedropathing.math.Pose;
+import com.pedropathing.follower.Follower;
 
 import org.whitneyrobotics.ftc.teamcode.Constants.Alliance;
 import org.whitneyrobotics.ftc.teamcode.pedro.PedroDrive;
@@ -23,10 +24,10 @@ public class RobotImpl {
     public double targetOuttakeVelocity = 0;
 
 
-    private RobotImpl(HardwareMap hardwareMap) {
-        drive = new PedroDrive(hardwareMap);
+    private RobotImpl(HardwareMap hardwareMap, boolean withIntake, Follower follower) {
+        drive = follower == null ? new PedroDrive(hardwareMap) : new PedroDrive(follower);
         //devices
-        intake = new Intake(hardwareMap);
+        if (withIntake) intake = new Intake(hardwareMap);
 //        ll=new LimelightImpl(hardwareMap);
 //        notifier = new Notifier();
     }
@@ -50,7 +51,11 @@ public class RobotImpl {
     }
 
     public static void init(HardwareMap hardwareMap) {
-        instance = new RobotImpl(hardwareMap);
+        instance = new RobotImpl(hardwareMap, true, null);
+    }
+
+    public static RobotImpl driveOnly(HardwareMap hardwareMap, Follower follower) {
+        return new RobotImpl(hardwareMap, false, follower);
     }
 
 //    public void update(){

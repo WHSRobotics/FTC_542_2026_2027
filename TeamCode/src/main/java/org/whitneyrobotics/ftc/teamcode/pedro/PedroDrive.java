@@ -17,6 +17,10 @@ public class PedroDrive {
         follower = Constants.create(hardwareMap);
     }
 
+    public PedroDrive(Follower follower) {
+        this.follower = follower;
+    }
+
     public void initialize() {
         follower.update();
     }

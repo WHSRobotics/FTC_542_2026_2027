@@ -17,16 +17,16 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class Constants {
-    // Names/directions carried over verbatim from the Pedro 2 config (note: its "rightFront" was "bl", "leftRear" was "fr").
+    // Match the working outtake test's Driver Station motor names.
     public static MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
-        c.frontLeftName.set("fl");
-        c.frontRightName.set("bl");
-        c.backLeftName.set("fr");
-        c.backRightName.set("br");
+        c.frontLeftName.set("fL");
+        c.frontRightName.set("fR");
+        c.backLeftName.set("bL");
+        c.backRightName.set("bR");
         c.frontLeftDirection.set(DcMotorSimple.Direction.REVERSE);
         c.frontRightDirection.set(DcMotorSimple.Direction.FORWARD);
-        c.backLeftDirection.set(DcMotorSimple.Direction.FORWARD);
-        c.backRightDirection.set(DcMotorSimple.Direction.REVERSE);
+        c.backLeftDirection.set(DcMotorSimple.Direction.REVERSE);
+        c.backRightDirection.set(DcMotorSimple.Direction.FORWARD);
         c.manualBrakeMode.set(true);
     });
 

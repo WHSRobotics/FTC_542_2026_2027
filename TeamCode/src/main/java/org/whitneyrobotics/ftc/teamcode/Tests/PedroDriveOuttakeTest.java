@@ -1,26 +1,18 @@
 package org.whitneyrobotics.ftc.teamcode.Tests;
 
 import com.pedropathing.follower.ManualDrive;
-import com.pedropathing.follower.Follower;
-import com.pedropathing.localization.Localizer;
-import com.pedropathing.localization.MotionState;
 import com.pedropathing.math.Pose;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.IMU;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.whitneyrobotics.ftc.teamcode.Extensions.OpModeEx.OpModeEx;
 import org.whitneyrobotics.ftc.teamcode.Subsystems.RobotImpl;
-import org.whitneyrobotics.ftc.teamcode.pedro.Constants;
 
 @TeleOp(name = "Pedro 3 Drive + Outtake Test", group = "Tests")
 public class PedroDriveOuttakeTest extends OpModeEx {
     private RobotImpl robot;
     private DcMotorEx flywheel;
-    private IMU imu;
     private double startingHeading;
     private double ticksPerRev;
     private boolean fieldCentric;
@@ -28,41 +20,7 @@ public class PedroDriveOuttakeTest extends OpModeEx {
 
     @Override
     public void initInternal() {
-        imu = hardwareMap.get(IMU.class, "imu");
-        imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
-                RevHubOrientationOnRobot.UsbFacingDirection.UP)));
-
-        // shortcut: IMU supplies heading only; restore Pinpoint when X/Y localization is tuned.
-        Localizer headingOnly = new Localizer() {
-            private MotionState state = MotionState.zero();
-            private double headingOffset;
-
-            @Override
-            public void setPose(Pose pose) {
-                headingOffset = pose.heading() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-                state = MotionState.zero().withPose(pose);
-            }
-
-            @Override
-            public MotionState state() {
-                return state;
-            }
-
-            @Override
-            public void update() {
-                Pose pose = state.pose();
-                state = MotionState.zero().withPose(new Pose(pose.x(), pose.y(),
-                        imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) + headingOffset));
-            }
-
-            @Override
-            public void reset() {
-                setPose(Pose.zero());
-            }
-        };
-        robot = RobotImpl.driveOnly(hardwareMap,
-                new Follower(headingOnly, Constants.drivetrain(hardwareMap), Constants.foresight()));
+        robot = RobotImpl.driveOnly(hardwareMap);
         robot.drive.setStartingPose(new Pose(0, 0, 0));
         robot.drive.initialize();
         for (String name : new String[]{"fL", "bL", "fR", "bR"}) {
@@ -78,7 +36,7 @@ public class PedroDriveOuttakeTest extends OpModeEx {
 
     @Override
     public void startInternal() {
-        startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        startingHeading = robot.drive.getPose().heading();
         gamepad1.BUMPER_RIGHT.onPress(() -> fieldCentric = !fieldCentric);
 //        gamepad1.TRIANGLE.onPress(() -> setRpm(2000));
 //        gamepad1.CIRCLE.onPress(() -> setRpm(2500));
@@ -103,17 +61,19 @@ public class PedroDriveOuttakeTest extends OpModeEx {
         turn = turn * turn * turn * speed;
 
         if (fieldCentric) {
-            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - startingHeading;
+            double heading = robot.drive.getPose().heading() - startingHeading;
             robot.drive.follower.manual(ManualDrive.fieldCentric(forward, lateral, turn, heading));
         } else {
             robot.drive.follower.manual(forward, lateral, turn);
         }
         robot.drive.follower.update();
 
-        telemetryPro.addData("Drive mode", fieldCentric ? "Field-centric (IMU)" : "Robot-centric");
+        telemetryPro.addData("Drive mode", fieldCentric ? "Field-centric (Pinpoint)" : "Robot-centric");
         telemetryPro.addData("Speed mode", gamepad1.BUMPER_LEFT.value() ? "Slow (50%)" : "Normal");
         telemetryPro.addData("Pedro mode", robot.drive.follower.mode());
-        telemetryPro.addData("IMU heading", robot.drive.getPose().heading());
+        telemetryPro.addData("Pinpoint heading", robot.drive.getPose().heading());
+        telemetryPro.addData("Pose X", robot.drive.getPose().x());
+        telemetryPro.addData("Pose Y", robot.drive.getPose().y());
         telemetryPro.addData("Flywheel target RPM", targetRpm);
 //        telemetryPro.addData("Flywheel actual RPM", flywheel.getVelocity() * 60 / ticksPerRev);
     }

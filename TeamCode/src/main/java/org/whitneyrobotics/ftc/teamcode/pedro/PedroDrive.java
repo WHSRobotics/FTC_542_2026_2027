@@ -23,8 +23,8 @@ public class PedroDrive {
 
     public void update(GamepadEx gamepad) {
         double forward = gamepad.LEFT_STICK_Y.value() * scalar;
-        double lateral = gamepad.LEFT_STICK_X.value() * scalar;
-        double turn = gamepad.RIGHT_STICK_X.value() * scalar;
+        double lateral = -gamepad.LEFT_STICK_X.value() * scalar;
+        double turn = -gamepad.RIGHT_STICK_X.value() * scalar;
         if (robotCentric) {
             follower.manual(forward, lateral, turn);
         } else {

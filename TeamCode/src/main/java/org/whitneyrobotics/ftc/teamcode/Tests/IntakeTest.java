@@ -1,27 +1,27 @@
 package org.whitneyrobotics.ftc.teamcode.Tests;
 
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 
-import org.whitneyrobotics.ftc.teamcode.Extensions.OpModeEx.OpModeEx;
-import org.whitneyrobotics.ftc.teamcode.Subsystems.Intake;
+@TeleOp(name = "intakeTest", group = "Tests")
+public class IntakeTest extends PedroDriveOuttakeTest {
+    private DcMotorEx intake;
 
-@TeleOp(name = "intakeTest")
-public class IntakeTest extends OpModeEx {
-    public Intake intake;
     @Override
     public void initInternal() {
-        intake = new Intake(hardwareMap);
+        super.initInternal();
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
     }
 
     @Override
-    protected void loopInternal() {
-        gamepad1.A.onPress(() -> {
-            if(intake.getPower()==0){
-                intake.run(1);
-            } else{
-                intake.stop();
-            }
-        });
+    public void startInternal() {
+        super.startInternal();
+        gamepad1.TRIANGLE.onPress(() -> intake.setPower(intake.getPower() == 0 ? 0.5 : 0));
     }
 
+    @Override
+    public void stop() {
+        if (intake != null) intake.setPower(0);
+        super.stop();
+    }
 }

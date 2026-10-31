@@ -24,6 +24,7 @@ public class PedroDriveOuttakeTest extends OpModeEx {
     private double startingHeading;
     private double ticksPerRev;
     private boolean fieldCentric;
+    private boolean resetTriggerPressed;
     private int targetRpm;
 
     @Override
@@ -32,6 +33,7 @@ public class PedroDriveOuttakeTest extends OpModeEx {
         imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
                 RevHubOrientationOnRobot.UsbFacingDirection.UP)));
+        startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
         // shortcut: IMU supplies heading only; restore Pinpoint when X/Y localization is tuned.
         Localizer headingOnly = new Localizer() {
@@ -78,7 +80,6 @@ public class PedroDriveOuttakeTest extends OpModeEx {
 
     @Override
     public void startInternal() {
-        startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         gamepad1.BUMPER_RIGHT.onPress(() -> fieldCentric = !fieldCentric);
 //        gamepad1.TRIANGLE.onPress(() -> setRpm(2000));
 //        gamepad1.CIRCLE.onPress(() -> setRpm(2500));
@@ -94,6 +95,11 @@ public class PedroDriveOuttakeTest extends OpModeEx {
 
     @Override
     protected void loopInternal() {
+        boolean triggerPressed = gamepad1.RIGHT_TRIGGER.value() > 0.5;
+        if (triggerPressed && !resetTriggerPressed) {
+            startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        }
+        resetTriggerPressed = triggerPressed;
         double forward = gamepad1.LEFT_STICK_Y.value();
         double lateral = -gamepad1.LEFT_STICK_X.value();
         double turn = -gamepad1.RIGHT_STICK_X.value();

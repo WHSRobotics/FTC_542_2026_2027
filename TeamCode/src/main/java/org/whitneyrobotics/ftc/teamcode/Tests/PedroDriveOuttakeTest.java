@@ -20,10 +20,10 @@ import org.whitneyrobotics.ftc.teamcode.pedro.Constants;
 public class PedroDriveOuttakeTest extends OpModeEx {
     private RobotImpl robot;
     private DcMotorEx flywheel;
-    private IMU imu;
-    private double startingHeading;
+    protected IMU imu;
+    protected double startingHeading;
     private double ticksPerRev;
-    private boolean fieldCentric;
+    protected boolean fieldCentric;
     private boolean resetTriggerPressed;
     private int targetRpm;
 
@@ -120,7 +120,6 @@ public class PedroDriveOuttakeTest extends OpModeEx {
         telemetryPro.addData("Speed mode", gamepad1.BUMPER_LEFT.value() ? "Slow (50%)" : "Normal");
         telemetryPro.addData("Pedro mode", robot.drive.follower.mode());
         telemetryPro.addData("IMU heading", robot.drive.getPose().heading());
-        telemetryPro.addData("Flywheel target RPM", targetRpm);
 //        telemetryPro.addData("Flywheel actual RPM", flywheel.getVelocity() * 60 / ticksPerRev);
     }
 

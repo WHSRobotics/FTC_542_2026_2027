@@ -16,10 +16,6 @@ import java.io.IOException;
 
 @TeleOp(name = "nov test", group = "Tests")
 public class NovTest extends PedroDriveOuttakeTest {
-    private DcMotorEx outtake, intake;
-    private double outtakeTicks, intakeTicks;
-    private int outtakeRpm = 2000, intakeRpm = 2000;
-    private boolean outtakeOn, intakeOn;
     private BufferedWriter log;
     private String logStatus = "Not started";
     private double nextSample, nextFlush = 1;
@@ -30,29 +26,16 @@ public class NovTest extends PedroDriveOuttakeTest {
     @Override
     public void initInternal() {
         super.initInternal();
-        outtake = hardwareMap.get(DcMotorEx.class, "outtake");
-        intake = hardwareMap.get(DcMotorEx.class, "intake");
-        outtake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        outtakeTicks = outtake.getMotorType().getTicksPerRev();
-        intakeTicks = intake.getMotorType().getTicksPerRev();
-        if (outtakeTicks <= 0 || intakeTicks <= 0) throw new IllegalStateException("Configure encoder motor types for outtake and intake");
+        robot.initCompetitionMotors(hardwareMap);
         if (hardwareMap.voltageSensor.iterator().hasNext()) battery = hardwareMap.voltageSensor.iterator().next();
-        try { outtakePid = outtake.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
-        try { intakePid = intake.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
+        try { outtakePid = robot.outtakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
+        try { intakePid = robot.intakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
     }
 
     @Override
     public void startInternal() {
         super.startInternal();
-        gamepad2.TRIANGLE.onPress(() -> outtakeOn = true);
-        gamepad2.CROSS.onPress(() -> outtakeOn = false);
-        gamepad2.SQUARE.onPress(() -> outtakeRpm = Math.max(0, outtakeRpm - 500));
-        gamepad2.CIRCLE.onPress(() -> outtakeRpm += 500);
-        gamepad2.DPAD_UP.onPress(() -> intakeOn = true);
-        gamepad2.DPAD_DOWN.onPress(() -> intakeOn = false);
-        gamepad2.DPAD_LEFT.onPress(() -> intakeRpm = Math.max(0, intakeRpm - 500));
-        gamepad2.DPAD_RIGHT.onPress(() -> intakeRpm += 500);
+        robot.configureCompetitionControls(gamepad2);
         try {
             File dir = AppUtil.ROBOT_DATA_DIR;
             if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create data directory");
@@ -70,25 +53,22 @@ public class NovTest extends PedroDriveOuttakeTest {
     @Override
     protected void loopInternal() {
         super.loopInternal();
-        if (outtakeOn && outtakeRpm > 0) outtake.setVelocity(outtakeRpm * outtakeTicks / 60);
-        else outtake.setPower(0);
-        if (intakeOn && intakeRpm > 0) intake.setVelocity(intakeRpm * intakeTicks / 60);
-        else intake.setPower(0);
-        double outtakeRaw = outtake.getVelocity(), intakeRaw = intake.getVelocity();
-        double outtakeActual = outtakeRaw * 60 / outtakeTicks, intakeActual = intakeRaw * 60 / intakeTicks;
+        robot.updateCompetitionMotors();
+        double outtakeRaw = robot.outtakeMotor.getVelocity(), intakeRaw = robot.intakeMotor.getVelocity();
+        double outtakeActual = outtakeRaw * 60 / robot.outtakeTicks, intakeActual = intakeRaw * 60 / robot.intakeTicks;
         double time = getRuntime();
         if (time >= nextElectricalSample) {
             try { voltage = battery == null ? Double.NaN : battery.getVoltage(); } catch (RuntimeException e) { voltage = Double.NaN; }
-            try { outtakeAmps = outtake.getCurrent(CurrentUnit.AMPS); } catch (RuntimeException e) { outtakeAmps = Double.NaN; }
-            try { intakeAmps = intake.getCurrent(CurrentUnit.AMPS); } catch (RuntimeException e) { intakeAmps = Double.NaN; }
+            try { outtakeAmps = robot.outtakeMotor.getCurrent(CurrentUnit.AMPS); } catch (RuntimeException e) { outtakeAmps = Double.NaN; }
+            try { intakeAmps = robot.intakeMotor.getCurrent(CurrentUnit.AMPS); } catch (RuntimeException e) { intakeAmps = Double.NaN; }
             nextElectricalSample = time + 0.2;
         }
         double yaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         if (log != null && time >= nextSample) {
             try {
                 log.write(time + "," + voltage + "," + (fieldCentric ? "field" : "robot") + "," + yaw + "," + startingHeading + "," + gamepad1.LEFT_STICK_X.value() + "," + gamepad1.LEFT_STICK_Y.value() + "," + gamepad1.RIGHT_STICK_X.value() + "," + gamepad1.BUMPER_LEFT.value() + "," + gamepad1.RIGHT_TRIGGER.value()
-                        + motorRow(outtake, outtakeOn, outtakeRpm, outtakeTicks, outtakeRaw, outtakeActual, outtakeAmps, outtakePid)
-                        + motorRow(intake, intakeOn, intakeRpm, intakeTicks, intakeRaw, intakeActual, intakeAmps, intakePid) + "\n");
+                        + motorRow(robot.outtakeMotor, robot.outtakeOn, robot.outtakeRpm, robot.outtakeTicks, outtakeRaw, outtakeActual, outtakeAmps, outtakePid)
+                        + motorRow(robot.intakeMotor, robot.intakeOn, robot.intakeRpm, robot.intakeTicks, intakeRaw, intakeActual, intakeAmps, intakePid) + "\n");
                 nextSample = time + 0.05;
                 if (time >= nextFlush) { log.flush(); nextFlush = time + 1; }
             } catch (IOException e) {
@@ -96,21 +76,20 @@ public class NovTest extends PedroDriveOuttakeTest {
                 closeLog();
             }
         }
-        telemetryPro.addData("Outtake", (outtakeOn ? "On" : "Off") + " target " + outtakeRpm + " RPM, actual " + Math.round(outtakeActual));
-        telemetryPro.addData("Intake", (intakeOn ? "On" : "Off") + " target " + intakeRpm + " RPM, actual " + Math.round(intakeActual));
+        telemetryPro.addData("Outtake", (robot.outtakeOn ? "On" : "Off") + " target " + robot.outtakeRpm + " RPM, actual " + Math.round(outtakeActual));
+        telemetryPro.addData("Intake", (robot.intakeOn ? "On" : "Off") + " target " + robot.intakeRpm + " RPM, actual " + Math.round(intakeActual));
         telemetryPro.addData("Battery volts", voltage);
-        telemetryPro.addData("Outtake encoder", outtakeRaw + " ticks/s; " + outtakeTicks + " ticks/rev; " + outtake.getCurrentPosition() + " ticks");
-        telemetryPro.addData("Intake encoder", intakeRaw + " ticks/s; " + intakeTicks + " ticks/rev; " + intake.getCurrentPosition() + " ticks");
+        telemetryPro.addData("Outtake encoder", outtakeRaw + " ticks/s; " + robot.outtakeTicks + " ticks/rev; " + robot.outtakeMotor.getCurrentPosition() + " ticks");
+        telemetryPro.addData("Intake encoder", intakeRaw + " ticks/s; " + robot.intakeTicks + " ticks/rev; " + robot.intakeMotor.getCurrentPosition() + " ticks");
         telemetryPro.addData("Motor current (A)", "Outtake " + outtakeAmps + "; intake " + intakeAmps);
-        telemetryPro.addData("Motor types", outtake.getMotorType().getName() + " / " + intake.getMotorType().getName());
+        telemetryPro.addData("Motor types", robot.outtakeMotor.getMotorType().getName() + " / " + robot.intakeMotor.getMotorType().getName());
         telemetryPro.addData("Velocity PIDF", String.valueOf(outtakePid) + " / " + String.valueOf(intakePid));
         telemetryPro.addData("Log", logStatus);
     }
 
     @Override
     public void stop() {
-        if (outtake != null) outtake.setPower(0);
-        if (intake != null) intake.setPower(0);
+        if (robot != null) robot.stopCompetitionMotors();
         closeLog();
         super.stop();
     }

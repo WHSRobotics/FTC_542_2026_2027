@@ -18,7 +18,7 @@ import org.whitneyrobotics.ftc.teamcode.pedro.Constants;
 
 @TeleOp(name = "Pedro 3 Drive + Outtake Test", group = "Tests")
 public class PedroDriveOuttakeTest extends OpModeEx {
-    private RobotImpl robot;
+    protected RobotImpl robot;
     private DcMotorEx flywheel;
     protected IMU imu;
     protected double startingHeading;

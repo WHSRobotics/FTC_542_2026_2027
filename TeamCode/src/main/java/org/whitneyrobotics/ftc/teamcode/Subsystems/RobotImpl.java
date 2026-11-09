@@ -1,12 +1,21 @@
 package org.whitneyrobotics.ftc.teamcode.Subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.pedropathing.math.Pose;
 import com.pedropathing.follower.Follower;
+import com.pedropathing.follower.ManualDrive;
+import com.pedropathing.localization.Localizer;
+import com.pedropathing.localization.MotionState;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.hardware.IMU;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 import org.whitneyrobotics.ftc.teamcode.Constants.Alliance;
+import org.whitneyrobotics.ftc.teamcode.Extensions.GamepadEx.GamepadEx;
 import org.whitneyrobotics.ftc.teamcode.pedro.PedroDrive;
+import org.whitneyrobotics.ftc.teamcode.pedro.Constants;
 
 public class RobotImpl {
 
@@ -16,6 +25,14 @@ public class RobotImpl {
     //devices
     public PedroDrive drive;
     public Intake intake;
+    public DcMotorEx outtakeMotor, intakeMotor;
+    public double outtakeTicks, intakeTicks;
+    public int outtakeRpm = 2000, intakeRpm = 2000;
+    public boolean outtakeOn, intakeOn;
+    public IMU imu;
+    public double startingHeading;
+    public boolean fieldCentric;
+    private boolean resetTriggerPressed;
     //    public LimelightImpl ll;
 //    public Notifier notifier;
     public double outtakev1=1;
@@ -56,6 +73,92 @@ public class RobotImpl {
 
     public static RobotImpl driveOnly(HardwareMap hardwareMap, Follower follower) {
         return new RobotImpl(hardwareMap, false, follower);
+    }
+
+    public static RobotImpl imuDriveOnly(HardwareMap hardwareMap) {
+        IMU imu = hardwareMap.get(IMU.class, "imu");
+        imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
+                RevHubOrientationOnRobot.UsbFacingDirection.UP)));
+        // shortcut: Heading only; use Pinpoint when position localization is tuned.
+        Localizer localizer = new Localizer() {
+            private MotionState state = MotionState.zero();
+            private double offset;
+            public void setPose(Pose pose) {
+                offset = pose.heading() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+                state = MotionState.zero().withPose(pose);
+            }
+            public MotionState state() { return state; }
+            public void update() {
+                Pose pose = state.pose();
+                state = MotionState.zero().withPose(new Pose(pose.x(), pose.y(), imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) + offset));
+            }
+            public void reset() { setPose(Pose.zero()); }
+        };
+        RobotImpl robot = driveOnly(hardwareMap, new Follower(localizer, Constants.drivetrain(hardwareMap), Constants.foresight()));
+        robot.imu = imu;
+        robot.startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        robot.drive.setStartingPose(Pose.zero());
+        robot.drive.initialize();
+        for (String name : new String[]{"fL", "bL", "fR", "bR"}) {
+            hardwareMap.get(DcMotorEx.class, name).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+        return robot;
+    }
+
+    public void configureDriveControls(GamepadEx gamepad) {
+        gamepad.BUMPER_RIGHT.onPress(() -> fieldCentric = !fieldCentric);
+    }
+
+    public void updateImuDrive(GamepadEx gamepad) {
+        boolean pressed = gamepad.RIGHT_TRIGGER.value() > 0.5;
+        if (pressed && !resetTriggerPressed) startingHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        resetTriggerPressed = pressed;
+        double forward = gamepad.LEFT_STICK_Y.value();
+        double lateral = -gamepad.LEFT_STICK_X.value();
+        double turn = -gamepad.RIGHT_STICK_X.value();
+        double speed = gamepad.BUMPER_LEFT.value() ? 0.5 : 1.0;
+        forward = forward * forward * forward * speed;
+        lateral = lateral * lateral * lateral * speed;
+        turn = turn * turn * turn * speed;
+        if (fieldCentric) {
+            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - startingHeading;
+            drive.follower.manual(ManualDrive.fieldCentric(forward, lateral, turn, heading));
+        } else drive.follower.manual(forward, lateral, turn);
+        drive.follower.update();
+    }
+
+    public void initCompetitionMotors(HardwareMap hardwareMap) {
+        outtakeMotor = hardwareMap.get(DcMotorEx.class, "outtake");
+        intakeMotor = hardwareMap.get(DcMotorEx.class, "intake");
+        outtakeMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        intakeMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        outtakeTicks = outtakeMotor.getMotorType().getTicksPerRev();
+        intakeTicks = intakeMotor.getMotorType().getTicksPerRev();
+        if (outtakeTicks <= 0 || intakeTicks <= 0) throw new IllegalStateException("Configure encoder motor types for outtake and intake");
+    }
+
+    public void updateCompetitionMotors() {
+        if (outtakeOn && outtakeRpm > 0) outtakeMotor.setVelocity(outtakeRpm * outtakeTicks / 60);
+        else outtakeMotor.setPower(0);
+        if (intakeOn && intakeRpm > 0) intakeMotor.setVelocity(intakeRpm * intakeTicks / 60);
+        else intakeMotor.setPower(0);
+    }
+
+    public void configureCompetitionControls(GamepadEx gamepad) {
+        gamepad.TRIANGLE.onPress(() -> outtakeOn = true);
+        gamepad.CROSS.onPress(() -> outtakeOn = false);
+        gamepad.SQUARE.onPress(() -> outtakeRpm = Math.max(0, outtakeRpm - 500));
+        gamepad.CIRCLE.onPress(() -> outtakeRpm += 500);
+        gamepad.DPAD_UP.onPress(() -> intakeOn = true);
+        gamepad.DPAD_DOWN.onPress(() -> intakeOn = false);
+        gamepad.DPAD_LEFT.onPress(() -> intakeRpm = Math.max(0, intakeRpm - 500));
+        gamepad.DPAD_RIGHT.onPress(() -> intakeRpm += 500);
+    }
+
+    public void stopCompetitionMotors() {
+        if (outtakeMotor != null) outtakeMotor.setPower(0);
+        if (intakeMotor != null) intakeMotor.setPower(0);
     }
 
 //    public void update(){

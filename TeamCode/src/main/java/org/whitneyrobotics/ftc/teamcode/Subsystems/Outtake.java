@@ -3,6 +3,7 @@ package org.whitneyrobotics.ftc.teamcode.Subsystems;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.sql.Array;
 import java.util.ArrayList;
@@ -15,6 +16,10 @@ public class Outtake {
     double totalTicks, rWheel, rNectar, rPollen, mNectar, mPollen, r, m, h0, hF, launchAngle;
     double dragCoeff = 0.5, g = 9.80665, p = 1.225;
     Limelight cam;
+
+    public double kp=0, ki=0, kd=0, kf=0; //tune
+    public double pOut, iOut, dOut, fOut, error, velocity, integral=0, lastError=0;
+    ElapsedTime pidTimer=new ElapsedTime();
 
     public Outtake(HardwareMap hardwareMap, boolean isNectar, double inhF, double inh0){
         outtake=hardwareMap.get(DcMotorEx.class,"outtake");
@@ -31,30 +36,45 @@ public class Outtake {
             m=mPollen;
         }
     }
-    public Outtake(HardwareMap hardwareMap, boolean isNectar){
+    public Outtake(HardwareMap hardwareMap, double kp, double ki, double kd, double kf){
         outtake=hardwareMap.get(DcMotorEx.class,"outtake");
         staticVel=true;
         cam=new Limelight(hardwareMap);
         h0=0.15;
         hF=1.1;
         launchAngle=30;
-        if (isNectar){
-            r=rNectar;
-            m=mNectar;
-        }else{
-            r=rPollen;
-            m=mPollen;
-        }
+        r=rPollen;
+        m=mPollen;
+        this.kp=kp;
+        this.ki=ki;
+        this.kd=kd;
+        this.kf=kf;
     }
+
     public void run(double scalar){
         if (staticVel){
             outtake.setPower(scalar);
         }else{
-            outtake.setVelocity(calcVel());
+            runPIDF(calcVel());
         }
+    }
+    public void runPIDF(double targetVel){
+        double dt=pidTimer.seconds();
+        pidTimer.reset();
+        velocity=outtake.getVelocity();
+        error=targetVel-velocity;
+        integral+=error*dt;
+        double derivative=dt>0 ? (error-lastError)/dt : 0;
+        lastError=error;
+        pOut=kp*error;
+        iOut=ki*integral;
+        dOut=kd*derivative;
+        fOut=kf*targetVel;
+        outtake.setPower(Math.max(-1, Math.min(1, pOut+iOut+dOut+fOut)));
     }
     public void stop(){
         outtake.setPower(0);
+        integral=0;
     }
     public double getPower(){
         return outtake.getPower();

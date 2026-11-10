@@ -11,7 +11,7 @@ public class OuttakeTest extends OpModeEx {
     public Outtake outtake;
     @Override
     public void initInternal() {
-        outtake = new Outtake(hardwareMap, true);
+        outtake = new Outtake(hardwareMap,1,1,1,1);
     }
 
     @Override

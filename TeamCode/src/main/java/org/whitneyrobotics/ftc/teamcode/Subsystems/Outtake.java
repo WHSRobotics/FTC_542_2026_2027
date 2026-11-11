@@ -1,5 +1,6 @@
 package org.whitneyrobotics.ftc.teamcode.Subsystems;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -8,7 +9,7 @@ import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.DoublePredicate;
-
+@Config
 public class Outtake {
     public DcMotorEx outtake;
     boolean staticVel;
@@ -16,8 +17,10 @@ public class Outtake {
     double dragCoeff = 0.5, g = 9.80665, p = 1.225;
 //    Limelight cam;
 
-    public double kp=0, ki=0, kd=0, kf=0; //tune
+    public static double kp=0, ki=0, kd=0, kf=0; //tune
     public double pOut, iOut, dOut, fOut, error, velocity, integral=0, lastError=0;
+    public static boolean running=false;
+    public static double targetVel=0;
     ElapsedTime pidTimer=new ElapsedTime();
 
     public Outtake(HardwareMap hardwareMap, boolean isNectar, double inhF, double inh0){
@@ -35,7 +38,7 @@ public class Outtake {
             m=mPollen;
         }
     }
-    public Outtake(HardwareMap hardwareMap, double kp, double ki, double kd, double kf){
+    public Outtake(HardwareMap hardwareMap){
         outtake=hardwareMap.get(DcMotorEx.class,"outtake");
         staticVel=true;
 //        cam=new Limelight(hardwareMap);
@@ -44,10 +47,6 @@ public class Outtake {
         launchAngle=30;
         r=rPollen;
         m=mPollen;
-        this.kp=kp;
-        this.ki=ki;
-        this.kd=kd;
-        this.kf=kf;
     }
 
     public void run(double scalar){
@@ -58,19 +57,23 @@ public class Outtake {
             outtake.setPower(scalar);
         }
     }
-    public void runPIDF(double targetVel){
-        double dt=pidTimer.seconds();
-        pidTimer.reset();
-        velocity=outtake.getVelocity();
-        error=targetVel-velocity;
-        integral+=error*dt;
-        double derivative=dt>0 ? (error-lastError)/dt : 0;
-        lastError=error;
-        pOut=kp*error;
-        iOut=ki*integral;
-        dOut=kd*derivative;
-        fOut=kf*targetVel;
-        outtake.setPower(Math.max(-1, Math.min(1, pOut+iOut+dOut+fOut)));
+    public void runPIDF(){
+        if(running) {
+            double dt = pidTimer.seconds();
+            pidTimer.reset();
+            velocity = outtake.getVelocity();
+            error = targetVel - velocity;
+            integral += error * dt;
+            double derivative = dt > 0 ? (error - lastError) / dt : 0;
+            lastError = error;
+            pOut = kp * error;
+            iOut = ki * integral;
+            dOut = kd * derivative;
+            fOut = kf * targetVel;
+            outtake.setPower(Math.max(-1, Math.min(1, pOut + iOut + dOut + fOut)));
+        }else{
+            outtake.setPower(0);
+        }
     }
     public void stop(){
         outtake.setPower(0);

@@ -12,33 +12,22 @@ import org.whitneyrobotics.ftc.teamcode.Subsystems.Outtake;
 @Config
 @TeleOp(name="Outtake PIDF Tuner", group="Tests")
 public class OuttakePIDF extends OpModeEx {
-    public static double kp=0, ki=0, kd=0, kf=0;
-    public static double targetVel=0;
-    public static boolean running=false;
 
     Outtake outtake;
     Telemetry dash;
 
     @Override
     public void initInternal(){
-        outtake=new Outtake(hardwareMap, kp, ki, kd, kf);
+        outtake=new Outtake(hardwareMap);
         dash=new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
     }
 
     @Override
     protected void loopInternal(){
-        outtake.kp=kp;
-        outtake.ki=ki;
-        outtake.kd=kd;
-        outtake.kf=kf;
 
-        if (running){
-            outtake.runPIDF(targetVel);
-        }else{
-            outtake.stop();
-        }
+        outtake.runPIDF();
 
-        dash.addData("target", targetVel);
+        dash.addData("targetVel", outtake.targetVel);
         dash.addData("velocity", outtake.outtake.getVelocity());
         dash.addData("error", outtake.error);
         dash.addData("pOut", outtake.pOut);
@@ -46,10 +35,10 @@ public class OuttakePIDF extends OpModeEx {
         dash.addData("dOut", outtake.dOut);
         dash.addData("fOut", outtake.fOut);
         dash.addData("power", outtake.getPower());
-        dash.addData("kp", kp);
-        dash.addData("ki", ki);
-        dash.addData("kd", kd);
-        dash.addData("kf", kf);
+        dash.addData("kp", outtake.kp);
+        dash.addData("ki", outtake.ki);
+        dash.addData("kd", outtake.kd);
+        dash.addData("kf", outtake.kf);
         dash.update();
     }
 }

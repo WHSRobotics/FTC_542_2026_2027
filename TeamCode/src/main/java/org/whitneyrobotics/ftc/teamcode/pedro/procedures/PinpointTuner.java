@@ -85,6 +85,7 @@ class PinpointCustomPodScalar extends TuningOpMode<Double> {
 
     @Override
     protected Double runTuningOpMode() throws InterruptedException {
+        if (!Double.isFinite(distance) || distance <= 0) throw new IllegalArgumentException("Enter a positive measured distance in inches");
         PinpointConfig config = new PinpointConfig(c -> {
             c.name.set(name);
             c.ticksPerUnit.set(OptionalDouble.of(1.0));
@@ -99,10 +100,15 @@ class PinpointCustomPodScalar extends TuningOpMode<Double> {
         waitForStart();
         localizer.setPose(Pose.zero());
         localizer.update();
+        double x = 0;
         while (!isStopRequested()) {
             localizer.update();
+            if (!isStopRequested()) x = localizer.pose().x();
+            telemetry.addData("Forward reading", x);
+            telemetry.update();
         }
-        return Math.abs((localizer.pose().x() / distance));
+        if (!Double.isFinite(x) || Math.abs(x) < 0.1) throw new IllegalStateException("No forward pod movement detected; check Pinpoint and X pod");
+        return Math.abs(x / distance);
     }
 }
 
@@ -151,8 +157,11 @@ class PinpointForwardDirection extends TuningOpMode<Boolean> {
             if (!isStopRequested()) {
                 x = localizer.pose().x();
             }
+            telemetry.addData("Forward reading (in)", x);
+            telemetry.update();
         }
 
+        if (!Double.isFinite(x) || Math.abs(x) < 0.1) throw new IllegalStateException("No forward pod movement detected; check Pinpoint and X pod");
         return x < 0;
     }
 }
@@ -201,8 +210,11 @@ class PinpointStrafeDirection extends TuningOpMode<Boolean> {
             if (!isStopRequested()) {
                 y = localizer.pose().y();
             }
+            telemetry.addData("Left reading (in)", y);
+            telemetry.update();
         }
 
+        if (!Double.isFinite(y) || Math.abs(y) < 0.1) throw new IllegalStateException("No strafe pod movement detected; check Pinpoint and Y pod");
         return y < 0;
     }
 }
@@ -262,8 +274,8 @@ class PinpointOffsets extends TuningOpMode<List<Double>> {
         localizer.setPose(Pose.zero());
 
         while (!isStopRequested()) {
-            previous = localizer.pose();
             localizer.update();
+            if (!isStopRequested()) previous = localizer.pose();
 
             telemetry.addData("heading", localizer.pose().heading());
             telemetry.addData("pose", localizer.pose());
@@ -271,8 +283,9 @@ class PinpointOffsets extends TuningOpMode<List<Double>> {
             telemetry.update();
         }
 
-        if (localizer.pose().x() != Pose.zero().x() || localizer.pose().y() != Pose.zero().y()) {
-            previous =  localizer.pose();
+        if (!Double.isFinite(previous.x()) || !Double.isFinite(previous.y()) || !Double.isFinite(previous.heading())
+                || Math.abs(previous.heading()) < 2.5) {
+            throw new IllegalStateException("Heading did not reach approximately 180 degrees; check Pinpoint and repeat the turn");
         }
 
         return List.of(((-previous.y()) / 2.0), ((-previous.x()) / 2.0));

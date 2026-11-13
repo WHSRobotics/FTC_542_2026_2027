@@ -7,8 +7,15 @@ public class CompDrivetrain extends PedroDriveOuttakeTest {
     private double nextRumble = 15;
 
     @Override
+    public void initInternal() {
+        super.initInternal();
+        robot.initOuttakeServo(hardwareMap);
+    }
+
+    @Override
     public void startInternal() {
         super.startInternal();
+        robot.configureOuttakeServo(gamepad2);
         nextRumble = 15;
     }
 

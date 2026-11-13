@@ -22,11 +22,16 @@ public class NovTest extends PedroDriveOuttakeTest {
     private double nextElectricalSample, voltage = Double.NaN, outtakeAmps = Double.NaN, intakeAmps = Double.NaN;
     private VoltageSensor battery;
     private PIDFCoefficients outtakePid, intakePid;
+    private PIDFCoefficients originalOuttakePid;
 
     @Override
     public void initInternal() {
         super.initInternal();
         robot.initCompetitionMotors(hardwareMap);
+        robot.initOuttakeServo(hardwareMap);
+        originalOuttakePid = robot.outtakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.outtakeMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(100, 0.3, 0, 18));
+        robot.outtakeTicks = 28;
         if (hardwareMap.voltageSensor.iterator().hasNext()) battery = hardwareMap.voltageSensor.iterator().next();
         try { outtakePid = robot.outtakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
         try { intakePid = robot.intakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
@@ -36,6 +41,7 @@ public class NovTest extends PedroDriveOuttakeTest {
     public void startInternal() {
         super.startInternal();
         robot.configureCompetitionControls(gamepad2);
+        robot.configureOuttakeServo(gamepad2);
         try {
             File dir = AppUtil.ROBOT_DATA_DIR;
             if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create data directory");
@@ -90,6 +96,10 @@ public class NovTest extends PedroDriveOuttakeTest {
     @Override
     public void stop() {
         if (robot != null) robot.stopCompetitionMotors();
+        if (robot != null && robot.outtakeMotor != null && originalOuttakePid != null) {
+            try { robot.outtakeMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, originalOuttakePid); }
+            catch (RuntimeException ignored) { }
+        }
         closeLog();
         super.stop();
     }

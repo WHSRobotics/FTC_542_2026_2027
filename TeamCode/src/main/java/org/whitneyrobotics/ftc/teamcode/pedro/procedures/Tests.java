@@ -301,8 +301,12 @@ class TestsLocalization extends TuningOpMode<Boolean> {
             drivetrain.drive(new DrivePowers(-gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x), true);
             localizer.update();
             telemetry.addData("Pose", localizer.pose());
+            telemetry.addData("X (in)", localizer.pose().x());
+            telemetry.addData("Y (in)", localizer.pose().y());
+            telemetry.addData("Heading (deg)", Math.toDegrees(localizer.pose().heading()));
             telemetry.update();
         }
+        drivetrain.drive(new DrivePowers(0, 0, 0), true);
         return true;
     }
 }

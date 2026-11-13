@@ -34,12 +34,12 @@ public class Constants {
     public static PinpointConfig localizerConfig = new PinpointConfig(c -> {
         c.name.set("pinpoint");
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        c.xPodOffset.set(-8.50394);
-        c.yPodOffset.set(-0.944882);
+        c.xPodOffset.set(0.42086086873933093);
+        c.yPodOffset.set(-0.12370598597789376);
         c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
         c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
-        c.offsetUnits.set(DistanceUnit.INCH);
         c.globalDistanceUnit.set(DistanceUnit.INCH);
+        c.offsetUnits.set(DistanceUnit.INCH);
     });
 
     // shortcut: Braking starts from the old coast deceleration; replace with Foresight AutoTune results before running paths.

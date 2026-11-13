@@ -18,6 +18,8 @@ import java.io.IOException;
 
 @TeleOp(name = "Competition TeleOp")
 public class CompetitionTeleOp extends OpModeEx {
+    // shortcut: Enable after Pinpoint directions, offsets, and localization are verified on the robot.
+    private static final boolean USE_PINPOINT = false;
     private RobotImpl robot;
     private BufferedWriter log;
     private String logStatus = "Not started";
@@ -25,11 +27,13 @@ public class CompetitionTeleOp extends OpModeEx {
     private double nextElectricalSample, voltage = Double.NaN, outtakeAmps = Double.NaN, intakeAmps = Double.NaN;
     private VoltageSensor battery;
     private PIDFCoefficients outtakePid, intakePid;
+    private double nextRumble = 15;
 
     @Override
     public void initInternal() {
-        robot = RobotImpl.imuDriveOnly(hardwareMap);
+        robot = RobotImpl.competitionDrive(hardwareMap, USE_PINPOINT);
         robot.initCompetitionMotors(hardwareMap);
+        robot.initOuttakeServo(hardwareMap);
         if (hardwareMap.voltageSensor.iterator().hasNext()) battery = hardwareMap.voltageSensor.iterator().next();
         try { outtakePid = robot.outtakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
         try { intakePid = robot.intakeMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER); } catch (RuntimeException ignored) { }
@@ -37,8 +41,9 @@ public class CompetitionTeleOp extends OpModeEx {
 
     @Override
     public void startInternal() {
+        nextRumble = 15;
         robot.configureDriveControls(gamepad1);
-        robot.configureCompetitionControls(gamepad2);
+        robot.configureMatchControls(gamepad2);
         try {
             File dir = AppUtil.ROBOT_DATA_DIR;
             if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create data directory");
@@ -55,12 +60,17 @@ public class CompetitionTeleOp extends OpModeEx {
 
     @Override
     protected void loopInternal() {
+        if (getRuntime() >= nextRumble) {
+            gamepad1.Vibrate(500);
+            nextRumble = (Math.floor(getRuntime() / 15) + 1) * 15;
+        }
         robot.updateImuDrive(gamepad1);
-        telemetryPro.addData("Drive mode", robot.fieldCentric ? "Field-centric (IMU)" : "Robot-centric");
+        telemetryPro.addData("Drive mode", robot.fieldCentric ? "Field-centric" : "Robot-centric");
+        telemetryPro.addData("Heading source", USE_PINPOINT ? "Pinpoint" : "Control Hub IMU");
         telemetryPro.addData("Speed mode", gamepad1.BUMPER_LEFT.value() ? "Slow (50%)" : "Normal");
         telemetryPro.addData("Pedro mode", robot.drive.follower.mode());
-        telemetryPro.addData("IMU heading", robot.drive.getPose().heading());
-        robot.updateCompetitionMotors();
+        telemetryPro.addData("Localization heading", robot.drive.getPose().heading());
+        robot.updateMatchMotors(gamepad1, gamepad2);
         double outtakeRaw = robot.outtakeMotor.getVelocity(), intakeRaw = robot.intakeMotor.getVelocity();
         double outtakeActual = outtakeRaw * 60 / robot.outtakeTicks, intakeActual = intakeRaw * 60 / robot.intakeTicks;
         double time = getRuntime();
@@ -73,7 +83,7 @@ public class CompetitionTeleOp extends OpModeEx {
         double yaw = robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         if (log != null && time >= nextSample) {
             try {
-                log.write(time + "," + voltage + "," + (robot.fieldCentric ? "field" : "robot") + "," + yaw + "," + robot.startingHeading + "," + gamepad1.LEFT_STICK_X.value() + "," + gamepad1.LEFT_STICK_Y.value() + "," + gamepad1.RIGHT_STICK_X.value() + "," + gamepad1.BUMPER_LEFT.value() + "," + gamepad1.RIGHT_TRIGGER.value()
+                log.write(time + "," + voltage + "," + (robot.fieldCentric ? "field" : "robot") + "," + yaw + "," + robot.startingHeading + "," + gamepad1.LEFT_STICK_X.value() + "," + gamepad1.LEFT_STICK_Y.value() + "," + gamepad1.RIGHT_STICK_X.value() + "," + gamepad1.BUMPER_LEFT.value() + "," + gamepad1.CROSS.value()
                         + motorRow(robot.outtakeMotor, robot.outtakeOn, robot.outtakeRpm, robot.outtakeTicks, outtakeRaw, outtakeActual, outtakeAmps, outtakePid)
                         + motorRow(robot.intakeMotor, robot.intakeOn, robot.intakeRpm, robot.intakeTicks, intakeRaw, intakeActual, intakeAmps, intakePid) + "\n");
                 nextSample = time + 0.05;
@@ -85,6 +95,7 @@ public class CompetitionTeleOp extends OpModeEx {
         }
         telemetryPro.addData("Outtake", (robot.outtakeOn ? "On" : "Off") + " target " + robot.outtakeRpm + " RPM, actual " + Math.round(outtakeActual));
         telemetryPro.addData("Intake", (robot.intakeOn ? "On" : "Off") + " target " + robot.intakeRpm + " RPM, actual " + Math.round(intakeActual));
+        telemetryPro.addData("Outtake servo", robot.outtakeServo.getPosition());
         telemetryPro.addData("Battery volts", voltage);
         telemetryPro.addData("Outtake encoder", outtakeRaw + " ticks/s; " + robot.outtakeTicks + " ticks/rev; " + robot.outtakeMotor.getCurrentPosition() + " ticks");
         telemetryPro.addData("Intake encoder", intakeRaw + " ticks/s; " + robot.intakeTicks + " ticks/rev; " + robot.intakeMotor.getCurrentPosition() + " ticks");

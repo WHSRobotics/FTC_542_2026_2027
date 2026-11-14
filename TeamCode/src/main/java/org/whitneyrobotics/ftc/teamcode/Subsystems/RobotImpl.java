@@ -176,6 +176,9 @@ public class RobotImpl {
         gamepad.CROSS.onPress(() -> outtakeRpm = Math.max(0, outtakeRpm - 500));
         gamepad.DPAD_UP.onPress(() -> intakeRpm += 100);
         gamepad.DPAD_DOWN.onPress(() -> intakeRpm = Math.max(0, intakeRpm - 100));
+        gamepad.BUMPER_LEFT.onPress(() -> {
+            if (!servoExtended) gamepad.Vibrate(500);
+        });
         configureOuttakeServo(gamepad);
     }
 

@@ -30,14 +30,13 @@ public class Constants {
         c.manualBrakeMode.set(true);
     });
 
-    // Pedro 2 passed forwardPodY then strafePodX to Pinpoint.setOffsets(x, y).
     public static PinpointConfig localizerConfig = new PinpointConfig(c -> {
         c.name.set("pinpoint");
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        c.xPodOffset.set(0.42086086873933093);
-        c.yPodOffset.set(-0.12370598597789376);
-        c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
-        c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
+        c.xPodOffset.set(2.697149862454632);
+        c.yPodOffset.set(-0.3190248594509335);
+        c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
         c.globalDistanceUnit.set(DistanceUnit.INCH);
         c.offsetUnits.set(DistanceUnit.INCH);
     });

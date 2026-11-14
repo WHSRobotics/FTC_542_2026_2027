@@ -172,6 +172,10 @@ public class RobotImpl {
         outtakeOn = false;
         driverIntakePressed = false;
         operatorOuttakePressed = false;
+        gamepad.TRIANGLE.onPress(() -> outtakeRpm += 500);
+        gamepad.CROSS.onPress(() -> outtakeRpm = Math.max(0, outtakeRpm - 500));
+        gamepad.DPAD_UP.onPress(() -> intakeRpm += 100);
+        gamepad.DPAD_DOWN.onPress(() -> intakeRpm = Math.max(0, intakeRpm - 100));
         configureOuttakeServo(gamepad);
     }
 
